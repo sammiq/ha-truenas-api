@@ -2,15 +2,15 @@
     "config": {
         "step": {
             "user": {
-                "description": "Enter the credentials for the TrueNAS server.",
+                "description": "Enter the connection information for the TrueNAS server.",
                 "data": {
-                    "username": "Username",
-                    "password": "Password"
+                    "address": "Address",
+                    "api-key": "API Key"
                 }
             }
         },
         "error": {
-            "auth": "Username/Password is wrong.",
+            "auth": "API Key is incorrect.",
             "connection": "Unable to connect to the server.",
             "unknown": "Unknown error occurred."
         },

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
+from homeassistant.const import CONF_ADDRESS, CONF_APIKEY
 from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from slugify import slugify
@@ -32,8 +32,8 @@ class TrueNasFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             try:
                 await self._test_credentials(
-                    username=user_input[CONF_USERNAME],
-                    password=user_input[CONF_PASSWORD],
+                    address=user_input[CONF_ADDRESS],
+                    apikey=user_input[CONF_APIKEY],
                 )
             except TrueNasApiClientAuthenticationError as exception:
                 LOGGER.warning(exception)
@@ -49,11 +49,11 @@ class TrueNasFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                     ## Do NOT use this in production code
                     ## The unique_id should never be something that can change
                     ## https://developers.home-assistant.io/docs/config_entries_config_flow_handler#unique-ids
-                    unique_id=slugify(user_input[CONF_USERNAME])
+                    unique_id=slugify(user_input[CONF_ADDRESS])
                 )
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(
-                    title=user_input[CONF_USERNAME],
+                    title=user_input[CONF_ADDRESS],
                     data=user_input,
                 )
 
@@ -62,16 +62,16 @@ class TrueNasFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema(
                 {
                     vol.Required(
-                        CONF_USERNAME,
-                        default=(user_input or {}).get(CONF_USERNAME, vol.UNDEFINED),
+                        CONF_ADDRESS,
+                        default=(user_input or {}).get(CONF_ADDRESS, vol.UNDEFINED),
                     ): selector.TextSelector(
                         selector.TextSelectorConfig(
                             type=selector.TextSelectorType.TEXT,
                         ),
                     ),
-                    vol.Required(CONF_PASSWORD): selector.TextSelector(
+                    vol.Required(CONF_APIKEY): selector.TextSelector(
                         selector.TextSelectorConfig(
-                            type=selector.TextSelectorType.PASSWORD,
+                            type=selector.TextSelectorType.TEXT,
                         ),
                     ),
                 },
@@ -79,11 +79,11 @@ class TrueNasFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             errors=_errors,
         )
 
-    async def _test_credentials(self, username: str, password: str) -> None:
+    async def _test_credentials(self, address: str, apikey: str) -> None:
         """Validate credentials."""
         client = TrueNasApiClient(
-            username=username,
-            password=password,
+            address=address,
+            apikey=apikey,
             session=async_create_clientsession(self.hass),
         )
         await client.async_get_data()
