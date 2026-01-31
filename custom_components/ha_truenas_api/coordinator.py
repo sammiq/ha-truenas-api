@@ -1,4 +1,4 @@
-"""DataUpdateCoordinator for ha-truenas-api."""
+"""DataUpdateCoordinator for ha_truenas_api."""
 
 from __future__ import annotations
 

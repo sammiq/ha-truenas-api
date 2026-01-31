@@ -9,4 +9,4 @@ homeassistant:
 logger:
   default: info
   logs:
-    custom_components.ha-truenas-api: debug
+    custom_components.ha_truenas_api: debug

@@ -1,5 +1,5 @@
 {
-  "domain": "ha-truenas-api",
+  "domain": "ha_truenas_api",
   "name": "TrueNAS 25.10+ API",
   "codeowners": [
     "@ludeeus"

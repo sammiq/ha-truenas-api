@@ -1,4 +1,4 @@
-"""Switch platform for ha-truenas-api."""
+"""Switch platform for ha_truenas_api."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 ENTITY_DESCRIPTIONS = (
     SwitchEntityDescription(
-        key="ha-truenas-api",
+        key="ha_truenas_api",
         name="Integration Switch",
         icon="mdi:format-quote-close",
     ),
@@ -40,7 +40,7 @@ async def async_setup_entry(
 
 
 class IntegrationBlueprintSwitch(IntegrationBlueprintEntity, SwitchEntity):
-    """ha-truenas-api switch class."""
+    """ha_truenas_api switch class."""
 
     def __init__(
         self,

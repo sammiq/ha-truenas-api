@@ -2,7 +2,7 @@
     "config": {
         "step": {
             "user": {
-                "description": "If you need help with the configuration have a look here: https://github.com/sammiq/ha-truenas-api",
+                "description": "Enter the credentials for the TrueNAS server.",
                 "data": {
                     "username": "Username",
                     "password": "Password"

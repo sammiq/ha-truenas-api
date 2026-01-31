@@ -1,4 +1,4 @@
-"""Custom types for ha-truenas-api."""
+"""Custom types for ha_truenas_api."""
 
 from __future__ import annotations
 
