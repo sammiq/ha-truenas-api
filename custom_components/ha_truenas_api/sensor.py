@@ -83,7 +83,7 @@ class TrueNasSensor(TrueNasEntity, SensorEntity):
         entity_description: TrueNasSensorEntityDescription,
     ) -> None:
         """Initialize the sensor class."""
-        super().__init__(coordinator)
+        super().__init__(entity_description.key, coordinator)
         self.entity_description = entity_description
         self.data_key = entity_description.data_key
         self.scale = entity_description.scale

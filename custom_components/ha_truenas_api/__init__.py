@@ -41,7 +41,7 @@ async def async_setup_entry(
         name=DOMAIN,
         update_interval=timedelta(minutes=5),
     )
-    entry.title = entry.data[CONF_NAME] or "unnamed"
+
     entry.runtime_data = TrueNasData(
         client=WebSocketClient(
             address=entry.data[CONF_ADDRESS],
