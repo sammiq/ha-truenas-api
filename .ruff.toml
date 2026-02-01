@@ -15,10 +15,12 @@ ignore = [
     "ISC001", # incompatible with formatter
 
     # freaking annoying opinions on code that are pedantic
-    "E501"
+    "E501",
     "FBT001",
     "FBT003",
+    "PLR0912",
     "PLR0913",
+    "S101",
 ]
 
 [lint.flake8-pytest-style]

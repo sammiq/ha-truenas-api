@@ -60,5 +60,4 @@ class TrueNasBinarySensor(TrueNasEntity, BinarySensorEntity):
         """Return true if the binary_sensor is on."""
         if self.coordinator.data is None:
             return None
-        else:
-            return self.coordinator.data.get("title", "") == "foo"
+        return self.coordinator.data.get("title", "") == "foo"

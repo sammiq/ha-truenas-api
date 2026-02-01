@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
 import logging
 from typing import TYPE_CHECKING, Any
 
-from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 if TYPE_CHECKING:
+    from datetime import timedelta
+
+    from homeassistant.core import HomeAssistant
+
     from .data import TrueNasConfigEntry
 
 _LOGGER = logging.getLogger(__name__)
@@ -26,7 +28,8 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
         logger: logging.Logger,
         name: str,
         update_interval: timedelta | None = None,
-    ):
+    ) -> None:
+        """Initialize the TrueNasDataUpdateCoordinator."""
         super().__init__(
             hass,
             logger,
@@ -60,6 +63,7 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
                 raise UpdateFailed(exception) from exception
         else:
             _LOGGER.info("Connection not yet ready")
+        return None
 
     async def _handle_connection_change(
         self,
@@ -96,7 +100,7 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
             else:
                 _LOGGER.info("Authentication successful")
         elif is_error:
-            _LOGGER.error("error returned from request: %s", msg_id, data)
+            _LOGGER.error("error returned from request: %s error: %s", msg_id, data)
         elif msg_id == "system.info":
             _LOGGER.debug("Got system.info data from websocket")
             self.async_set_updated_data(data)

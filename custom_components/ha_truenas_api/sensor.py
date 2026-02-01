@@ -63,5 +63,4 @@ class TrueNasSensor(TrueNasEntity, SensorEntity):
         """Return the native value of the sensor."""
         if self.coordinator.data is None:
             return None
-        else:
-            return self.coordinator.data.get(self.data_key)
+        return self.coordinator.data.get(self.data_key)

@@ -1,6 +1,7 @@
 """Websocket implementation for ha_truenas_api."""
 
 import asyncio
+import contextlib
 import json
 import logging
 from collections.abc import Awaitable, Callable
@@ -75,7 +76,7 @@ class WebSocketClient:
         _LOGGER.info("WebSocket connection task started")
 
     async def _connect_with_retry(self) -> None:
-        """Internal method to connect with exponential backoff (runs in background)."""
+        """Connect with exponential backoff (runs in background)."""
         while self._should_reconnect:
             try:
                 # Check if we've exceeded max retries
@@ -119,7 +120,7 @@ class WebSocketClient:
                 self._is_connected = False
                 await self._notify_connection_handlers(False, "Connection closed")
 
-            except (aiohttp.ClientError, asyncio.TimeoutError, OSError) as e:
+            except (TimeoutError, aiohttp.ClientError, OSError) as e:
                 _LOGGER.warning("Connection failed: %s", e)
                 self._is_connected = False
                 await self._notify_connection_handlers(False, str(e))
@@ -149,9 +150,7 @@ class WebSocketClient:
                 return
 
             except Exception as e:
-                _LOGGER.error(
-                    "Unexpected error during connection: %s", e, exc_info=True
-                )
+                _LOGGER.exception("Unexpected error during connection")
                 self._is_connected = False
                 await self._notify_connection_handlers(False, str(e))
 
@@ -228,6 +227,13 @@ class WebSocketClient:
         _LOGGER.debug("Sent: %s", data)
 
     async def send_login(self, msg_id: int | str) -> None:
+        """
+        Send a login message using the API key.
+
+        Args:
+            msg_id (int | str): The message ID to use for the login request.
+
+        """
         await self.send_message(msg_id, "auth.login_with_api_key", [self.apikey])
 
     def add_message_handler(
@@ -270,10 +276,8 @@ class WebSocketClient:
         # Cancel connection task if running
         if self._connection_task and not self._connection_task.done():
             self._connection_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._connection_task
-            except asyncio.CancelledError:
-                pass
 
         # Close WebSocket
         if self.ws and not self.ws.closed:
