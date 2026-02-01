@@ -20,16 +20,19 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def _async_setup(self) -> None:
         """Set up the WebSocket connection."""
-        await self.config_entry.runtime_data.client.connect()
-
         # Register handler for incoming messages
         self.config_entry.runtime_data.client.add_message_handler(self._handle_message)
         self.config_entry.runtime_data.client.add_connection_handler(
             self._handle_connection_change
         )
 
+        await self.config_entry.runtime_data.client.connect()
+
+        _LOGGER.info("WebSocket coordinator setup complete")
+
     async def _async_update_data(self) -> Any:
         """Update data via library."""
+        _LOGGER.debug("Requesting data from websocket")
         try:
             return await self.config_entry.runtime_data.client.send_message(
                 "system.info", "system.info", []
@@ -45,7 +48,9 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
         """Handle WebSocket connection state changes."""
         self._connection_ok = is_connected
 
-        if not is_connected:
+        if is_connected:
+            _LOGGER.info("WebSocket connected")
+        else:
             _LOGGER.warning("WebSocket disconnected: %s", error)
             # Optionally mark entities as unavailable
             self.async_set_updated_data({})
@@ -64,6 +69,7 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
         if is_error:
             _LOGGER.error("error returned from request: %s", data)
         elif msg_id == "system.info":
+            _LOGGER.debug("Got system.info data from websocket")
             self.async_set_updated_data(data)
         else:
             _LOGGER.error("unexpected data received %s:%s", msg_id, data)

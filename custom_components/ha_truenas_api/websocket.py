@@ -36,18 +36,22 @@ class WebSocketClient:
             backoff_factor (float, optional): Factor by which the retry delay increases after each failure.
 
         """
-        self.url = urlunparse(("wss", address, "/api/current"))
+        self.url = f"wss://{address}/api/current"
         self.apikey = apikey
+
         self.session = None
         self.ws = None
+
         self._listen_task = None
-        self._reconnect_task = None
+        self._connection_task = None
+
         self._message_handlers: list[
             Callable[[int | str, dict, bool], Awaitable[None]]
         ] = []
         self._connection_handlers: list[
             Callable[[bool, str | None], Awaitable[None]]
         ] = []
+
         self._should_reconnect = True
         self._is_connected = False
 
@@ -65,7 +69,13 @@ class WebSocketClient:
     async def connect(self) -> None:
         """Establish WebSocket connection with retry logic."""
         self._should_reconnect = True
-        await self._connect_with_retry()
+
+        if self.session is None:
+            self.session = aiohttp.ClientSession()
+
+        self._connection_task = asyncio.create_task(self._connect_with_retry())
+
+        _LOGGER.info("WebSocket connection task started")
 
     async def _connect_with_retry(self) -> None:
         """Connect with exponential backoff (internal method)."""
@@ -95,11 +105,10 @@ class WebSocketClient:
                     self._retry_count + 1,
                 )
 
-                timeout = aiohttp.ClientWSTimeout(ws_receive=10.0, ws_close=10.0)
                 self.ws = await self.session.ws_connect(
                     self.url,
                     heartbeat=30,  # Send ping every 30 seconds to keep connection alive
-                    timeout=timeout,
+                    receive_timeout=None,  # Disable receive timeout (rely on heartbeat instead)
                 )
 
                 _LOGGER.info("WebSocket connected successfully")
@@ -197,6 +206,9 @@ class WebSocketClient:
         except asyncio.CancelledError:
             _LOGGER.debug("Listen task cancelled")
             raise
+        except TimeoutError:
+            # This is normal - server didn't send anything within receive timeout
+            _LOGGER.info("WebSocket receive timeout, connection likely dead")
         except Exception:
             _LOGGER.exception("Listen error")
         finally:
@@ -247,18 +259,27 @@ class WebSocketClient:
 
     async def close(self) -> None:
         """Close WebSocket connection and cleanup."""
-        if self._listen_task:
-            self._listen_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await self._listen_task
+        _LOGGER.info("Closing WebSocket client")
+        self._should_reconnect = False  # Stop reconnection attempts
 
-        if self.ws:
+        # Cancel connection task if running
+        if self._connection_task and not self._connection_task.done():
+            self._connection_task.cancel()
+            try:
+                await self._connection_task
+            except asyncio.CancelledError:
+                pass
+
+        # Close WebSocket
+        if self.ws and not self.ws.closed:
             await self.ws.close()
 
+        # Close session
         if self.session:
             await self.session.close()
 
-        _LOGGER.info("WebSocket closed")
+        self._is_connected = False
+        _LOGGER.info("WebSocket client closed")
 
     async def force_reconnect(self) -> None:
         """Force a reconnection (useful for manual retry)."""
