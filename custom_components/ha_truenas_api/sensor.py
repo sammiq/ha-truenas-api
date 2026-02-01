@@ -16,6 +16,8 @@ if TYPE_CHECKING:
     from .data import TrueNasConfigEntry
 
 
+# Note that you cannot extend SensorEntityDescription or HA gets grumpy, making this noodly tuple thing
+# the easiest way for the moment to work around it.
 ENTITY_DESCRIPTIONS = (
     (
         SensorEntityDescription(

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.const import CONF_ADDRESS, CONF_API_KEY
+from homeassistant.const import CONF_ADDRESS, CONF_API_KEY, CONF_NAME
 from homeassistant.helpers import selector
 from slugify import slugify
 
@@ -40,6 +40,14 @@ class TrueNasFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema(
                 {
                     vol.Required(
+                        CONF_NAME,
+                        default=(user_input or {}).get(CONF_NAME, vol.UNDEFINED),
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.TEXT,
+                        ),
+                    ),
+                    vol.Required(
                         CONF_ADDRESS,
                         default=(user_input or {}).get(CONF_ADDRESS, vol.UNDEFINED),
                     ): selector.TextSelector(
@@ -47,7 +55,10 @@ class TrueNasFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                             type=selector.TextSelectorType.TEXT,
                         ),
                     ),
-                    vol.Required(CONF_API_KEY): selector.TextSelector(
+                    vol.Required(
+                        CONF_API_KEY,
+                        default=(user_input or {}).get(CONF_API_KEY, vol.UNDEFINED),
+                    ): selector.TextSelector(
                         selector.TextSelectorConfig(
                             type=selector.TextSelectorType.TEXT,
                         ),

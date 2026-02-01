@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
-from homeassistant.const import CONF_ADDRESS, CONF_API_KEY, Platform
+from homeassistant.const import CONF_ADDRESS, CONF_API_KEY, CONF_NAME, Platform
 from homeassistant.loader import async_get_loaded_integration
 
 from .const import DOMAIN, LOGGER
@@ -41,6 +41,7 @@ async def async_setup_entry(
         name=DOMAIN,
         update_interval=timedelta(minutes=2),
     )
+    entry.title = entry.data[CONF_NAME] or "unnamed"
     entry.runtime_data = TrueNasData(
         client=WebSocketClient(
             address=entry.data[CONF_ADDRESS],
