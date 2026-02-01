@@ -14,8 +14,11 @@ ignore = [
     "COM812", # incompatible with formatter
     "ISC001", # incompatible with formatter
 
-    "FBT001", # freaking annoying
-    "FBT003", # also freaking annoying
+    # freaking annoying opinions on code that are pedantic
+    "E501"
+    "FBT001",
+    "FBT003",
+    "PLR0913",
 ]
 
 [lint.flake8-pytest-style]

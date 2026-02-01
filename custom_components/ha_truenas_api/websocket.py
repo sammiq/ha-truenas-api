@@ -30,6 +30,10 @@ class WebSocketClient:
         Args:
             address (str): The address to connect to.
             apikey (str): The API Key to use for authorization.
+            max_retries (int | None, optional): Maximum number of reconnection attempts (None for infinite retries).
+            initial_retry_delay (float, optional): Initial delay before retrying a failed connection (in seconds).
+            max_retry_delay (float, optional): Maximum delay between reconnection attempts (in seconds).
+            backoff_factor (float, optional): Factor by which the retry delay increases after each failure.
 
         """
         self.url = urlunparse(("wss", address, "/api/current"))
