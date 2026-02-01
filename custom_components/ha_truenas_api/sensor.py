@@ -54,4 +54,7 @@ class TrueNasSensor(TrueNasEntity, SensorEntity):
     @property
     def native_value(self) -> str | None:
         """Return the native value of the sensor."""
-        return self.coordinator.data.get("body")
+        if self.coordinator.data is None:
+            return None
+        else:
+            return self.coordinator.data.get("body")

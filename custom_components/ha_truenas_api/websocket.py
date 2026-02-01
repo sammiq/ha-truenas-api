@@ -1,11 +1,9 @@
 """Websocket implementation for ha_truenas_api."""
 
 import asyncio
-import contextlib
 import json
 import logging
 from collections.abc import Awaitable, Callable
-from urllib.parse import urlunparse
 
 import aiohttp
 
@@ -42,7 +40,6 @@ class WebSocketClient:
         self.session = None
         self.ws = None
 
-        self._listen_task = None
         self._connection_task = None
 
         self._message_handlers: list[
@@ -78,10 +75,7 @@ class WebSocketClient:
         _LOGGER.info("WebSocket connection task started")
 
     async def _connect_with_retry(self) -> None:
-        """Connect with exponential backoff (internal method)."""
-        if self.session is None:
-            self.session = aiohttp.ClientSession()
-
+        """Internal method to connect with exponential backoff (runs in background)."""
         while self._should_reconnect:
             try:
                 # Check if we've exceeded max retries
@@ -93,8 +87,7 @@ class WebSocketClient:
                         "Max retries (%s) exceeded, giving up", self.max_retries
                     )
                     await self._notify_connection_handlers(
-                        False,
-                        "Max retries exceeded",
+                        False, "Max retries exceeded"
                     )
                     return
 
@@ -105,10 +98,11 @@ class WebSocketClient:
                     self._retry_count + 1,
                 )
 
+                assert self.session is not None
                 self.ws = await self.session.ws_connect(
                     self.url,
-                    heartbeat=30,  # Send ping every 30 seconds to keep connection alive
-                    receive_timeout=None,  # Disable receive timeout (rely on heartbeat instead)
+                    heartbeat=30.0,  # Disable heartbeat - let server handle keepalive
+                    receive_timeout=None,  # No receive timeout
                 )
 
                 _LOGGER.info("WebSocket connected successfully")
@@ -118,13 +112,14 @@ class WebSocketClient:
                 # Notify connection handlers
                 await self._notify_connection_handlers(True, None)
 
-                # Start listening for messages
-                self._listen_task = asyncio.create_task(self._listen())
+                # Start listening for messages (this will block until connection closes)
+                await self._listen()
 
-                # Wait for the listen task to complete (connection closed)
-                await self._listen_task
+                # Connection closed, mark as disconnected
+                self._is_connected = False
+                await self._notify_connection_handlers(False, "Connection closed")
 
-            except (TimeoutError, aiohttp.ClientError) as e:
+            except (aiohttp.ClientError, asyncio.TimeoutError, OSError) as e:
                 _LOGGER.warning("Connection failed: %s", e)
                 self._is_connected = False
                 await self._notify_connection_handlers(False, str(e))
@@ -148,8 +143,15 @@ class WebSocketClient:
                 else:
                     return
 
+            except asyncio.CancelledError:
+                _LOGGER.info("Connection task cancelled")
+                self._is_connected = False
+                return
+
             except Exception as e:
-                _LOGGER.exception("Unexpected error during connection")
+                _LOGGER.error(
+                    "Unexpected error during connection: %s", e, exc_info=True
+                )
                 self._is_connected = False
                 await self._notify_connection_handlers(False, str(e))
 
@@ -224,6 +226,9 @@ class WebSocketClient:
         data = {"jsonrpc": "2.0", "id": msg_id, "method": method, "params": params}
         await self.ws.send_json(data)
         _LOGGER.debug("Sent: %s", data)
+
+    async def send_login(self, msg_id: int | str) -> None:
+        await self.send_message(msg_id, "auth.login_with_api_key", [self.apikey])
 
     def add_message_handler(
         self, handler: Callable[[int | str, dict, bool], Awaitable[None]]
