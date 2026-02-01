@@ -15,11 +15,15 @@ if TYPE_CHECKING:
     from .coordinator import TrueNasDataUpdateCoordinator
     from .data import TrueNasConfigEntry
 
+
 ENTITY_DESCRIPTIONS = (
-    SensorEntityDescription(
-        key="ha_truenas_api",
-        name="Integration Sensor",
-        icon="mdi:format-quote-close",
+    (
+        SensorEntityDescription(
+            key="ha_truenas_api",
+            name="TrueNAS Version",
+            icon="mdi:package-up",
+        ),
+        "version",
     ),
 )
 
@@ -34,8 +38,9 @@ async def async_setup_entry(
         TrueNasSensor(
             coordinator=entry.runtime_data.coordinator,
             entity_description=entity_description,
+            data_key=data_key,
         )
-        for entity_description in ENTITY_DESCRIPTIONS
+        for (entity_description, data_key) in ENTITY_DESCRIPTIONS
     )
 
 
@@ -46,10 +51,12 @@ class TrueNasSensor(TrueNasEntity, SensorEntity):
         self,
         coordinator: TrueNasDataUpdateCoordinator,
         entity_description: SensorEntityDescription,
+        data_key: str,
     ) -> None:
         """Initialize the sensor class."""
         super().__init__(coordinator)
         self.entity_description = entity_description
+        self.data_key = data_key
 
     @property
     def native_value(self) -> str | None:
@@ -57,4 +64,4 @@ class TrueNasSensor(TrueNasEntity, SensorEntity):
         if self.coordinator.data is None:
             return None
         else:
-            return self.coordinator.data.get("body")
+            return self.coordinator.data.get(self.data_key)
