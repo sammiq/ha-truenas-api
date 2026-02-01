@@ -39,7 +39,7 @@ async def async_setup_entry(
         hass=hass,
         logger=LOGGER,
         name=DOMAIN,
-        update_interval=timedelta(minutes=2),
+        update_interval=timedelta(minutes=5),
     )
     entry.title = entry.data[CONF_NAME] or "unnamed"
     entry.runtime_data = TrueNasData(
