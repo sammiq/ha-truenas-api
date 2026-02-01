@@ -2,7 +2,7 @@
   "domain": "ha_truenas_api",
   "name": "TrueNAS 25.10+ API",
   "codeowners": [
-    "@ludeeus"
+    "@sammiq"
   ],
   "config_flow": true,
   "documentation": "https://github.com/sammiq/ha-truenas-api",

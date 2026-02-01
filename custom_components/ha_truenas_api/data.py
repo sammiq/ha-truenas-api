@@ -9,8 +9,8 @@ if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.loader import Integration
 
-    from .api import TrueNasApiClient
     from .coordinator import TrueNasDataUpdateCoordinator
+    from .websocket import WebSocketClient
 
 
 type TrueNasConfigEntry = ConfigEntry[TrueNasData]
@@ -20,6 +20,6 @@ type TrueNasConfigEntry = ConfigEntry[TrueNasData]
 class TrueNasData:
     """Data for the TrueNas integration."""
 
-    client: TrueNasApiClient
+    client: WebSocketClient
     coordinator: TrueNasDataUpdateCoordinator
     integration: Integration

@@ -2,31 +2,76 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any
 
-from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-
-from .api import (
-    TrueNasApiClientAuthenticationError,
-    TrueNasApiClientError,
-)
 
 if TYPE_CHECKING:
     from .data import TrueNasConfigEntry
 
+_LOGGER = logging.getLogger(__name__)
 
-# https://developers.home-assistant.io/docs/integration_fetching_data#coordinated-single-api-poll-for-data-for-all-entities
+
 class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
     """Class to manage fetching data from the API."""
 
     config_entry: TrueNasConfigEntry
 
+    async def _async_setup(self) -> None:
+        """Set up the WebSocket connection."""
+        await self.config_entry.runtime_data.client.connect()
+
+        # Register handler for incoming messages
+        self.config_entry.runtime_data.client.add_message_handler(self._handle_message)
+        self.config_entry.runtime_data.client.add_connection_handler(
+            self._handle_connection_change
+        )
+
     async def _async_update_data(self) -> Any:
         """Update data via library."""
         try:
-            return await self.config_entry.runtime_data.client.async_get_data()
-        except TrueNasApiClientAuthenticationError as exception:
-            raise ConfigEntryAuthFailed(exception) from exception
-        except TrueNasApiClientError as exception:
+            return await self.config_entry.runtime_data.client.send_message(
+                "system.info", "system.info", []
+            )
+        except Exception as exception:
             raise UpdateFailed(exception) from exception
+
+    async def _handle_connection_change(
+        self,
+        is_connected: bool,
+        error: str | None,
+    ) -> None:
+        """Handle WebSocket connection state changes."""
+        self._connection_ok = is_connected
+
+        if not is_connected:
+            _LOGGER.warning("WebSocket disconnected: %s", error)
+            # Optionally mark entities as unavailable
+            self.async_set_updated_data({})
+
+    async def _handle_message(
+        self,
+        msg_id: int | str,
+        data: dict,
+        is_error: bool,
+    ) -> None:
+        """Handle incoming WebSocket message."""
+        if not self._connection_ok:
+            return
+
+        # Update coordinator data
+        if is_error:
+            _LOGGER.error("error returned from request: %s", data)
+        elif msg_id == "system.info":
+            self.async_set_updated_data(data)
+        else:
+            _LOGGER.error("unexpected data received %s:%s", msg_id, data)
+
+    async def async_force_reconnect(self) -> None:
+        """Manually trigger reconnection."""
+        await self.config_entry.runtime_data.client.force_reconnect()
+
+    async def async_shutdown(self) -> None:
+        """Clean shutdown of WebSocket."""
+        await self.config_entry.runtime_data.client.close()

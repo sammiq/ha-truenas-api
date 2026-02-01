@@ -10,14 +10,14 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
-from homeassistant.const import CONF_ADDRESS, CONF_APIKEY, Platform
+from homeassistant.const import CONF_ADDRESS, CONF_API_KEY, Platform
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.loader import async_get_loaded_integration
 
-from .api import TrueNasApiClient
 from .const import DOMAIN, LOGGER
 from .coordinator import TrueNasDataUpdateCoordinator
 from .data import TrueNasData
+from .websocket import WebSocketClient
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -27,7 +27,6 @@ if TYPE_CHECKING:
 PLATFORMS: list[Platform] = [
     Platform.SENSOR,
     Platform.BINARY_SENSOR,
-    Platform.SWITCH,
 ]
 
 
@@ -44,10 +43,9 @@ async def async_setup_entry(
         update_interval=timedelta(hours=1),
     )
     entry.runtime_data = TrueNasData(
-        client=TrueNasApiClient(
+        client=WebSocketClient(
             address=entry.data[CONF_ADDRESS],
-            apikey=entry.data[CONF_APIKEY],
-            session=async_get_clientsession(hass),
+            apikey=entry.data[CONF_API_KEY],
         ),
         integration=async_get_loaded_integration(hass, entry.domain),
         coordinator=coordinator,
