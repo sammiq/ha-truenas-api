@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from homeassistant.components.binary_sensor import (
-    BinarySensorDeviceClass,
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
+from homeassistant.const import EntityCategory
 
 from .entity import TrueNasEntity
 
@@ -19,11 +20,20 @@ if TYPE_CHECKING:
     from .coordinator import TrueNasDataUpdateCoordinator
     from .data import TrueNasConfigEntry
 
+
+@dataclass(frozen=True, kw_only=True)
+class TrueNasBinarySensorEntityDescription(BinarySensorEntityDescription):
+    """Describes TrueNAS binary sensor entities."""
+
+    data_key: str
+
+
 ENTITY_DESCRIPTIONS = (
-    BinarySensorEntityDescription(
-        key="ha_truenas_api",
-        name="TrueNAS API Binary Sensor",
-        device_class=BinarySensorDeviceClass.CONNECTIVITY,
+    TrueNasBinarySensorEntityDescription(
+        key="truenas_ecc_memory",
+        name="ECC Memory",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        data_key="ecc_memory",
     ),
 )
 
@@ -49,15 +59,16 @@ class TrueNasBinarySensor(TrueNasEntity, BinarySensorEntity):
     def __init__(
         self,
         coordinator: TrueNasDataUpdateCoordinator,
-        entity_description: BinarySensorEntityDescription,
+        entity_description: TrueNasBinarySensorEntityDescription,
     ) -> None:
         """Initialize the binary_sensor class."""
         super().__init__(coordinator)
         self.entity_description = entity_description
+        self.data_key = entity_description.data_key
 
     @property
     def is_on(self) -> bool | None:
         """Return true if the binary_sensor is on."""
         if self.coordinator.data is None:
             return None
-        return self.coordinator.data.get("title", "") == "foo"
+        return self.coordinator.data.get(self.data_key)
