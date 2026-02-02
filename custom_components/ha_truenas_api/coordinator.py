@@ -38,6 +38,7 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
         )
 
         self._connection_ok = False
+        self._data_cache = {}
 
     async def _async_setup(self) -> None:
         """Set up the WebSocket connection."""
@@ -101,11 +102,10 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
                 _LOGGER.info("Authentication successful")
         elif is_error:
             _LOGGER.error("error returned from request: %s error: %s", msg_id, data)
-        elif msg_id == "system.info":
-            _LOGGER.debug("Got system.info data from websocket")
-            self.async_set_updated_data(data)
         else:
-            _LOGGER.error("unexpected data received %s:%s", msg_id, data)
+            _LOGGER.debug("Got %s data from websocket", msg_id)
+            self._data_cache[msg_id] = data
+            self.async_set_updated_data(self._data_cache)
 
     async def async_force_reconnect(self) -> None:
         """Manually trigger reconnection."""

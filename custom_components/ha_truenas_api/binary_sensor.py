@@ -26,6 +26,7 @@ class TrueNasBinarySensorEntityDescription(BinarySensorEntityDescription):
     """Describes TrueNAS binary sensor entities."""
 
     data_key: str
+    item_key: str
 
 
 ENTITY_DESCRIPTIONS = (
@@ -33,7 +34,8 @@ ENTITY_DESCRIPTIONS = (
         key="truenas_ecc_memory",
         name="ECC Memory",
         entity_category=EntityCategory.DIAGNOSTIC,
-        data_key="ecc_memory",
+        data_key="system.info",
+        item_key="ecc_memory",
     ),
 )
 
@@ -65,10 +67,14 @@ class TrueNasBinarySensor(TrueNasEntity, BinarySensorEntity):
         super().__init__(entity_description.key, coordinator)
         self.entity_description = entity_description
         self.data_key = entity_description.data_key
+        self.item_key = entity_description.item_key
 
     @property
     def is_on(self) -> bool | None:
         """Return true if the binary_sensor is on."""
         if self.coordinator.data is None:
             return None
-        return self.coordinator.data.get(self.data_key)
+        data = self.coordinator.data.get(self.data_key)
+        if data is None:
+            return None
+        return data.get(self.item_key)

@@ -27,6 +27,7 @@ class TrueNasSensorEntityDescription(SensorEntityDescription):
     """Describes TrueNAs sensor entities."""
 
     data_key: str
+    item_key: str
     scale: float | None = None
 
 
@@ -37,7 +38,8 @@ ENTITY_DESCRIPTIONS = (
         key="truenas_version",
         name="TrueNAS Version",
         icon="mdi:package-up",
-        data_key="version",
+        data_key="system.info",
+        item_key="version",
     ),
     TrueNasSensorEntityDescription(
         key="truenas_physmem",
@@ -45,7 +47,8 @@ ENTITY_DESCRIPTIONS = (
         icon="mdi:memory",
         native_unit_of_measurement=UnitOfInformation.MEGABYTES,
         suggested_display_precision=2,
-        data_key="physmem",
+        data_key="system.info",
+        item_key="physmem",
         scale=1000000.0,
     ),
     TrueNasSensorEntityDescription(
@@ -54,7 +57,8 @@ ENTITY_DESCRIPTIONS = (
         icon="mdi:timer-outline",
         device_class=SensorDeviceClass.DURATION,
         native_unit_of_measurement=UnitOfTime.SECONDS,
-        data_key="uptime_seconds",
+        data_key="system.info",
+        item_key="uptime_seconds",
     ),
 )
 
@@ -86,6 +90,7 @@ class TrueNasSensor(TrueNasEntity, SensorEntity):
         super().__init__(entity_description.key, coordinator)
         self.entity_description = entity_description
         self.data_key = entity_description.data_key
+        self.item_key = entity_description.item_key
         self.scale = entity_description.scale
 
     @property
@@ -93,7 +98,10 @@ class TrueNasSensor(TrueNasEntity, SensorEntity):
         """Return the native value of the sensor."""
         if self.coordinator.data is None:
             return None
-        raw_value = self.coordinator.data.get(self.data_key)
+        data = self.coordinator.data.get(self.data_key)
+        if data is None:
+            return None
+        raw_value = data.get(self.item_key)
         if raw_value is None or self.scale is None:
             return raw_value
         try:
