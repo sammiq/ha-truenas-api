@@ -57,14 +57,18 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
         _LOGGER.debug("Requesting data from websocket")
         if self._connection_ok:
             try:
-                return await self.config_entry.runtime_data.client.send_message(
+                await self.config_entry.runtime_data.client.send_message(
                     "system.info", "system.info", []
+                )
+                await self.config_entry.runtime_data.client.send_message(
+                    "update.status", "update.status", []
                 )
             except Exception as exception:
                 raise UpdateFailed(exception) from exception
         else:
             _LOGGER.info("Connection not yet ready")
-        return None
+        # return the latest data we have, as updates will be async
+        return self._data_cache
 
     async def _handle_connection_change(
         self,
@@ -84,8 +88,9 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
                 _LOGGER.exception("failed to send login")
         else:
             _LOGGER.warning("WebSocket disconnected: %s", error)
-            # Optionally mark entities as unavailable
-            self.async_set_updated_data({})
+            # HMMM: do I want to mark entities as unavailable?
+            # self._data_cache = {}
+            # self.async_set_updated_data(self._data_cache)
 
     async def _handle_message(
         self,
@@ -105,6 +110,7 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
         else:
             _LOGGER.debug("Got %s data from websocket", msg_id)
             self._data_cache[msg_id] = data
+            # HMMM: do I want to do this here or just wait for the update date call?
             self.async_set_updated_data(self._data_cache)
 
     async def async_force_reconnect(self) -> None:

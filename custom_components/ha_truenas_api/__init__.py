@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
-from homeassistant.const import CONF_ADDRESS, CONF_API_KEY, CONF_NAME, Platform
+from homeassistant.const import CONF_ADDRESS, CONF_API_KEY, Platform
 from homeassistant.loader import async_get_loaded_integration
 
 from .const import DOMAIN, LOGGER
@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 PLATFORMS: list[Platform] = [
     Platform.SENSOR,
     Platform.BINARY_SENSOR,
+    Platform.UPDATE,
 ]
 
 
