@@ -30,10 +30,12 @@ class TrueNasBinarySensorEntityDescription(BinarySensorEntityDescription):
 
 
 ENTITY_DESCRIPTIONS = (
+    # i'd prefer this to return "installed"/"not installed"
     TrueNasBinarySensorEntityDescription(
         key="truenas_ecc_memory",
         name="ECC Memory",
-        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:memory",
+        entity_category=EntityCategory.CONFIG,
         data_key="system.info",
         item_key="ecc_memory",
     ),

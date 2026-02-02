@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import TYPE_CHECKING, Any
 
@@ -21,6 +22,7 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
     """Class to manage fetching data from the API."""
 
     config_entry: TrueNasConfigEntry
+    _MAX_LOGIN_RETRIES = 5
 
     def __init__(
         self,
@@ -38,6 +40,7 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
         )
 
         self._connection_ok = False
+        self._logged_in = False
         self._data_cache = {}
 
     async def _async_setup(self) -> None:
@@ -57,12 +60,24 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
         _LOGGER.debug("Requesting data from websocket")
         if self._connection_ok:
             try:
-                await self.config_entry.runtime_data.client.send_message(
-                    "system.info", "system.info", []
-                )
-                await self.config_entry.runtime_data.client.send_message(
-                    "update.status", "update.status", []
-                )
+                # wait for login to happen before sending commands
+                retry = 0
+                while (
+                    self._connection_ok
+                    and not self._logged_in
+                    and retry < self._MAX_LOGIN_RETRIES
+                ):
+                    retry += 1
+                    await asyncio.sleep(1)
+
+                if self._logged_in:
+                    await self.config_entry.runtime_data.client.send_message(
+                        "system.info", "system.info", []
+                    )
+                    await self.config_entry.runtime_data.client.send_message(
+                        "update.status", "update.status", []
+                    )
+
             except Exception as exception:
                 raise UpdateFailed(exception) from exception
         else:
@@ -87,6 +102,7 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
             except Exception:
                 _LOGGER.exception("failed to send login")
         else:
+            self._logged_in = False
             _LOGGER.warning("WebSocket disconnected: %s", error)
             # HMMM: do I want to mark entities as unavailable?
             # self._data_cache = {}
@@ -102,8 +118,10 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
         # Update coordinator data
         if msg_id == "auth.login_with_api_key":
             if is_error:
+                self._logged_in = False
                 _LOGGER.warning("Failed to authenticate")
             else:
+                self._logged_in = True
                 _LOGGER.info("Authentication successful")
         elif is_error:
             _LOGGER.error("error returned from request: %s error: %s", msg_id, data)
@@ -111,7 +129,8 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.debug("Got %s data from websocket", msg_id)
             self._data_cache[msg_id] = data
             # HMMM: do I want to do this here or just wait for the update date call?
-            self.async_set_updated_data(self._data_cache)
+            # self.async_set_updated_data(self._data_cache)
+            self.data = self._data_cache
 
     async def async_force_reconnect(self) -> None:
         """Manually trigger reconnection."""

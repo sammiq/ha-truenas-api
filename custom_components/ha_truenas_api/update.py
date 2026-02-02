@@ -65,7 +65,7 @@ class TrueNasUpdateEntity(TrueNasEntity, UpdateEntity):
         return this_data
 
     @property
-    def current_version(self) -> str | None:
+    def installed_version(self) -> str | None:
         """Return the latest version available."""
         if self.coordinator.data is None:
             return None
@@ -76,12 +76,15 @@ class TrueNasUpdateEntity(TrueNasEntity, UpdateEntity):
 
     @property
     def latest_version(self) -> str | None:
-        """Return the latest version available."""
+        """Return the latest version available, default to the installed version if none returned."""
         if self.coordinator.data is None:
             return None
-        return self._property_from_path(
-            self.coordinator.data,
-            "update.status:status:new_version:version",
+        return (
+            self._property_from_path(
+                self.coordinator.data,
+                "update.status:status:new_version:version",
+            )
+            or self.installed_version
         )
 
     @property
@@ -116,3 +119,8 @@ class TrueNasUpdateEntity(TrueNasEntity, UpdateEntity):
             self.coordinator.data,
             "update.status:update_download_progress:percent",
         )
+
+    @property
+    def entity_picture(self) -> str:
+        """Return the entity picture to use in the frontend."""
+        return "https://brands.home-assistant.io/_/truenas/icon.png"

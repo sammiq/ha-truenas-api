@@ -10,7 +10,7 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorEntityDescription,
 )
-from homeassistant.const import UnitOfInformation, UnitOfTime
+from homeassistant.const import EntityCategory, UnitOfInformation, UnitOfTime
 
 from .entity import TrueNasEntity
 
@@ -31,19 +31,19 @@ class TrueNasSensorEntityDescription(SensorEntityDescription):
     scale: float | None = None
 
 
-# Note that you cannot extend SensorEntityDescription or HA gets grumpy, making this noodly tuple thing
-# the easiest way for the moment to work around it.
 ENTITY_DESCRIPTIONS = (
     TrueNasSensorEntityDescription(
         key="truenas_version",
         name="TrueNAS Version",
         icon="mdi:package-up",
+        entity_category=EntityCategory.CONFIG,
         data_key="system.info",
         item_key="version",
     ),
     TrueNasSensorEntityDescription(
         key="truenas_physmem",
         name="Physical Memory",
+        entity_category=EntityCategory.CONFIG,
         icon="mdi:memory",
         native_unit_of_measurement=UnitOfInformation.MEGABYTES,
         suggested_display_precision=2,
