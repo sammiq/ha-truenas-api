@@ -29,7 +29,7 @@ async def async_setup_entry(
     update_desc = UpdateEntityDescription(
         key="truenas_version_update",
         name="Version Update",
-        entity_category=EntityCategory.CONFIG,
+        entity_category=EntityCategory.DIAGNOSTIC,
     )
 
     async_add_entities(

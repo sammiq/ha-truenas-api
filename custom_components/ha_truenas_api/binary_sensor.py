@@ -35,7 +35,7 @@ ENTITY_DESCRIPTIONS = (
         key="truenas_ecc_memory",
         name="ECC Memory",
         icon="mdi:memory",
-        entity_category=EntityCategory.CONFIG,
+        entity_category=EntityCategory.DIAGNOSTIC,
         data_key="system.info",
         item_key="ecc_memory",
     ),

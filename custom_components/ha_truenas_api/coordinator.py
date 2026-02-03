@@ -22,7 +22,7 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
     """Class to manage fetching data from the API."""
 
     config_entry: TrueNasConfigEntry
-    _MAX_LOGIN_RETRIES = 5
+    _MAX_LOGIN_RETRIES = 10
 
     def __init__(
         self,
@@ -42,6 +42,7 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
         self._connection_ok = False
         self._logged_in = False
         self._data_cache = {}
+        self._pending_requests = {}
 
     async def _async_setup(self) -> None:
         """Set up the WebSocket connection."""
@@ -57,32 +58,76 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self) -> Any:
         """Update data via library."""
+        # wait for connection and login to happen before sending commands
+        retry = 0
+        while (
+            not (self._connection_ok and self._logged_in)
+            and retry < self._MAX_LOGIN_RETRIES
+        ):
+            retry += 1
+            await asyncio.sleep(1)
+
+        if not (self._connection_ok and self._logged_in):
+            msg = "Connection or login to server failed"
+            raise TimeoutError(msg)
+
         _LOGGER.debug("Requesting data from websocket")
-        if self._connection_ok:
+        try:
+            future_a = asyncio.Future()
+            self._pending_requests["system.info"] = future_a
+            await self.config_entry.runtime_data.client.send_message(
+                "system.info", "system.info", []
+            )
+
+            future_b = asyncio.Future()
+            self._pending_requests["update.status"] = future_b
+            await self.config_entry.runtime_data.client.send_message(
+                "update.status", "update.status", []
+            )
+
+            future_c = asyncio.Future()
+            self._pending_requests["disk.details"] = future_c
+            await self.config_entry.runtime_data.client.send_message(
+                "disk.details",
+                "disk.details",
+                [{"join_partitions": False, "type": "USED"}],
+            )
+
             try:
-                # wait for login to happen before sending commands
-                retry = 0
-                while (
-                    self._connection_ok
-                    and not self._logged_in
-                    and retry < self._MAX_LOGIN_RETRIES
-                ):
-                    retry += 1
-                    await asyncio.sleep(1)
+                system_info, update_status, disk_details = await asyncio.wait_for(
+                    asyncio.gather(
+                        future_a, future_b, future_c, return_exceptions=True
+                    ),
+                    timeout=10.0,  # 10 second timeout for all polls
+                )
 
-                if self._logged_in:
-                    await self.config_entry.runtime_data.client.send_message(
-                        "system.info", "system.info", []
-                    )
-                    await self.config_entry.runtime_data.client.send_message(
-                        "update.status", "update.status", []
-                    )
+                # Update cache with results
+                if not isinstance(system_info, Exception):
+                    self._data_cache["system.info"] = system_info
+                else:
+                    _LOGGER.error("Failed to get system.info: %s", system_info)
 
-            except Exception as exception:
-                raise UpdateFailed(exception) from exception
-        else:
-            _LOGGER.info("Connection not yet ready")
-        # return the latest data we have, as updates will be async
+                if not isinstance(update_status, Exception):
+                    self._data_cache["update.status"] = update_status
+                else:
+                    _LOGGER.error("Failed to get update.status: %s", update_status)
+
+                if not isinstance(disk_details, Exception):
+                    self._data_cache["disk.details"] = disk_details
+                else:
+                    _LOGGER.error("Failed to get disk.details: %s", disk_details)
+
+            except TimeoutError:
+                _LOGGER.warning("Timeout waiting for responses from TrueNAS")
+                # Clean up pending requests
+                self._pending_requests.pop("system.info", None)
+                self._pending_requests.pop("update.status", None)
+                self._pending_requests.pop("disk.details", None)
+
+        except Exception as exception:
+            _LOGGER.exception("Error during update")
+            raise UpdateFailed(exception) from exception
+
         return self._data_cache
 
     async def _handle_connection_change(
@@ -100,13 +145,11 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
                     "auth.login_with_api_key"
                 )
             except Exception:
+                self._logged_in = False
                 _LOGGER.exception("failed to send login")
         else:
             self._logged_in = False
             _LOGGER.warning("WebSocket disconnected: %s", error)
-            # HMMM: do I want to mark entities as unavailable?
-            # self._data_cache = {}
-            # self.async_set_updated_data(self._data_cache)
 
     async def _handle_message(
         self,
@@ -123,14 +166,25 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
             else:
                 self._logged_in = True
                 _LOGGER.info("Authentication successful")
-        elif is_error:
+            return
+
+        if is_error:
             _LOGGER.error("error returned from request: %s error: %s", msg_id, data)
+            if msg_id in self._pending_requests:
+                future = self._pending_requests.pop(msg_id)
+                if not future.done():
+                    future.set_exception(Exception(f"TrueNAS error: {data}"))
+            return
+
+        _LOGGER.debug("Got %s data from websocket", msg_id)
+        if msg_id in self._pending_requests:
+            future = self._pending_requests.pop(msg_id)
+            if not future.done():
+                future.set_result(data)
         else:
-            _LOGGER.debug("Got %s data from websocket", msg_id)
+            # Unsolicited message
             self._data_cache[msg_id] = data
-            # HMMM: do I want to do this here or just wait for the update date call?
-            # self.async_set_updated_data(self._data_cache)
-            self.data = self._data_cache
+            self.async_set_updated_data(self._data_cache)
 
     async def async_force_reconnect(self) -> None:
         """Manually trigger reconnection."""
