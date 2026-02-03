@@ -124,7 +124,8 @@ ENTITY_DESCRIPTIONS = (
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         suggested_display_precision=0,
         data_key="reporting.graph.cputemp",
-        item_key="mean:cpu",
+        # should be largely irrelevant which I use, as its a single data point
+        item_key="aggregations:mean:cpu",
     ),
 )
 

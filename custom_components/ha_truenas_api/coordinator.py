@@ -83,7 +83,6 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
                     [
                         "cputemp",
                         {
-                            "aggregate": False,
                             "start": int(time.time() - 5.0),
                             "end": int(time.time() - 5.0),
                         },
