@@ -33,9 +33,10 @@ class TrueNasSensorEntityDescription(SensorEntityDescription):
     """Describes TrueNAs sensor entities."""
 
     data_key: str
+    data_index: int | None = None
     item_key: str
+    item_index: int | None = None
     scale: float | None = None
-    index: int | None = None
 
 
 ENTITY_DESCRIPTIONS = (
@@ -91,7 +92,7 @@ ENTITY_DESCRIPTIONS = (
         suggested_display_precision=1,
         data_key="system.info",
         item_key="loadavg",
-        index=0,
+        item_index=0,
         scale=1 / 100.0,
     ),
     TrueNasSensorEntityDescription(
@@ -102,7 +103,7 @@ ENTITY_DESCRIPTIONS = (
         suggested_display_precision=1,
         data_key="system.info",
         item_key="loadavg",
-        index=1,
+        item_index=1,
         scale=1 / 100.0,
     ),
     TrueNasSensorEntityDescription(
@@ -113,7 +114,7 @@ ENTITY_DESCRIPTIONS = (
         suggested_display_precision=1,
         data_key="system.info",
         item_key="loadavg",
-        index=2,
+        item_index=2,
         scale=1 / 100.0,
     ),
     TrueNasSensorEntityDescription(
@@ -124,6 +125,7 @@ ENTITY_DESCRIPTIONS = (
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         suggested_display_precision=0,
         data_key="reporting.graph.cputemp",
+        data_index=0,
         # should be largely irrelevant which I use, as its a single data point
         item_key="aggregations:mean:cpu",
     ),
@@ -157,9 +159,10 @@ class TrueNasSensor(TrueNasEntity, SensorEntity):
         super().__init__(entity_description.key, coordinator)
         self.entity_description = entity_description
         self.data_key = entity_description.data_key
+        self.data_index = entity_description.data_index
         self.item_key = entity_description.item_key
+        self.item_index = entity_description.item_index
         self.scale = entity_description.scale
-        self.index = entity_description.index
 
     @property
     def native_value(self) -> str | int | float | None:
@@ -167,16 +170,18 @@ class TrueNasSensor(TrueNasEntity, SensorEntity):
         if self.coordinator.data is None:
             return None
         data = self.coordinator.data.get(self.data_key)
-        if data is None:
-            return None
-        raw_value = self._property_from_path(data, self.item_key)
-        if raw_value is None:
-            return None
-        if self.index is not None and isinstance(raw_value, list):
-            raw_value = raw_value[self.index]
-        if raw_value is None or self.scale is None:
-            return raw_value
+
+        if self.data_index is not None and isinstance(data, list):
+            data = data[self.data_index]
+
+        data = self._property_from_path(data, self.item_key)
+
+        if self.item_index is not None and isinstance(data, list):
+            data = data[self.item_index]
+
+        if data is None or self.scale is None:
+            return data
         try:
-            return float(raw_value) / self.scale
+            return float(data) / self.scale
         except (ValueError, TypeError):
             return None

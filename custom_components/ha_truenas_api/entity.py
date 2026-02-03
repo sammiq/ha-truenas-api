@@ -28,12 +28,12 @@ class TrueNasEntity(CoordinatorEntity[TrueNasDataUpdateCoordinator]):
             },
         )
 
-    def _property_from_path(self, data: dict[str, Any], path: str) -> Any | None:
+    def _property_from_path(self, data: dict[str, Any] | None, path: str) -> Any | None:
         parts = path.split(":")
 
         this_data = data
         for part in parts:
-            this_data = this_data.get(part)
             if this_data is None:
                 return None
+            this_data = this_data.get(part)
         return this_data
