@@ -14,6 +14,7 @@ from homeassistant.const import (
     PERCENTAGE,
     EntityCategory,
     UnitOfInformation,
+    UnitOfTemperature,
     UnitOfTime,
 )
 
@@ -115,6 +116,16 @@ ENTITY_DESCRIPTIONS = (
         index=2,
         scale=1 / 100.0,
     ),
+    TrueNasSensorEntityDescription(
+        key="truenas_cpu_temperature",
+        name="CPU Temperature",
+        icon="mdi:equalizer",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        suggested_display_precision=0,
+        data_key="reporting.graph.cputemp",
+        item_key="mean:cpu",
+    ),
 )
 
 
@@ -157,7 +168,7 @@ class TrueNasSensor(TrueNasEntity, SensorEntity):
         data = self.coordinator.data.get(self.data_key)
         if data is None:
             return None
-        raw_value = data.get(self.item_key)
+        raw_value = self._property_from_path(data, self.item_key)
         if raw_value is None:
             return None
         if self.index is not None and isinstance(raw_value, list):

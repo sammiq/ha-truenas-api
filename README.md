@@ -7,13 +7,14 @@
 ![Project Maintenance][maintenance-shield]
 [![Community Forum][forum-shield]][forum]
 
-## NOTE: In heavy development, please do not install.
+## NOTE: In heavy development, please do not install. Please use another TrueNAS integration instead.
 
 _Integration to retrieve information from TrueNAS 25.10+ ver Websocket via JSON-RPC 2.0._
 
-Current TrueNAS integrations tend to use the now deprecated methods of retrieving data from TrueNAS.
+TrueNAS integrations tended to use the now deprecated methods of retrieving data from TrueNAS and/or
+had issues with stability/availability on my personal installation of HA.
 This, combined with the reduction in exposed data via SNMP, has led me to write my own integration
-for Home Assistant.
+for Home Assistant as a learning exercise.
 
 The goals of this project are simple:
 - create a device that represents a TrueNAS connection, with its offline and online status defined by the web socket connection state ONLY

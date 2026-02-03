@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from homeassistant.components.update import (
     UpdateEntity,
@@ -53,16 +53,6 @@ class TrueNasUpdateEntity(TrueNasEntity, UpdateEntity):
         """Initialize the update class."""
         super().__init__(entity_description.key, coordinator)
         self.entity_description = entity_description
-
-    def _property_from_path(self, data: dict[str, Any], path: str) -> Any | None:
-        parts = path.split(":")
-
-        this_data = data
-        for part in parts:
-            this_data = this_data.get(part)
-            if this_data is None:
-                return None
-        return this_data
 
     @property
     def installed_version(self) -> str | None:

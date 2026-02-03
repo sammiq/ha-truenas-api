@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -73,56 +74,53 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
 
         _LOGGER.debug("Requesting data from websocket")
         try:
-            future_a = asyncio.Future()
-            self._pending_requests["system.info"] = future_a
-            await self.config_entry.runtime_data.client.send_message(
-                "system.info", "system.info", []
-            )
+            jobs = {
+                "system.info": ("system.info", []),
+                "update.status": ("update.status", []),
+                "disk.details": ("disk.details", []),
+                "reporting.graph.cputemp": (
+                    "reporting.graph",
+                    [
+                        "cputemp",
+                        {
+                            "aggregate": False,
+                            "start": int(time.time() - 5.0),
+                            "end": int(time.time() - 5.0),
+                        },
+                    ],
+                ),
+            }
 
-            future_b = asyncio.Future()
-            self._pending_requests["update.status"] = future_b
-            await self.config_entry.runtime_data.client.send_message(
-                "update.status", "update.status", []
-            )
-
-            future_c = asyncio.Future()
-            self._pending_requests["disk.details"] = future_c
-            await self.config_entry.runtime_data.client.send_message(
-                "disk.details",
-                "disk.details",
-                [{"join_partitions": False, "type": "USED"}],
-            )
+            # rather than calling these individually, do them all at once
+            for job_key, (method, params) in jobs.items():
+                future = asyncio.Future()
+                self._pending_requests[job_key] = future
+                await self.config_entry.runtime_data.client.send_message(
+                    job_key, method, params
+                )
 
             try:
-                system_info, update_status, disk_details = await asyncio.wait_for(
+                results = await asyncio.wait_for(
                     asyncio.gather(
-                        future_a, future_b, future_c, return_exceptions=True
+                        *list(self._pending_requests.values()),
+                        return_exceptions=True,
                     ),
                     timeout=10.0,  # 10 second timeout for all polls
                 )
 
                 # Update cache with results
-                if not isinstance(system_info, Exception):
-                    self._data_cache["system.info"] = system_info
-                else:
-                    _LOGGER.error("Failed to get system.info: %s", system_info)
-
-                if not isinstance(update_status, Exception):
-                    self._data_cache["update.status"] = update_status
-                else:
-                    _LOGGER.error("Failed to get update.status: %s", update_status)
-
-                if not isinstance(disk_details, Exception):
-                    self._data_cache["disk.details"] = disk_details
-                else:
-                    _LOGGER.error("Failed to get disk.details: %s", disk_details)
+                for index, job_key in enumerate(self._pending_requests):
+                    if not isinstance(results[index], Exception):
+                        self._data_cache[job_key] = results[index]
+                    else:
+                        _LOGGER.error("Failed to get %s: %s", job_key, results[index])
 
             except TimeoutError:
                 _LOGGER.warning("Timeout waiting for responses from TrueNAS")
                 # Clean up pending requests
-                self._pending_requests.pop("system.info", None)
-                self._pending_requests.pop("update.status", None)
-                self._pending_requests.pop("disk.details", None)
+                for future in self._pending_requests.values():
+                    future.cancel()
+                self._pending_requests.clear()
 
         except Exception as exception:
             _LOGGER.exception("Error during update")
