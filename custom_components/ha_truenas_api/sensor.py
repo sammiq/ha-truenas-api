@@ -52,13 +52,14 @@ ENTITY_DESCRIPTIONS = (
     TrueNasSensorEntityDescription(
         key="truenas_physmem",
         name="Physical Memory",
+        device_class=SensorDeviceClass.DATA_SIZE,
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:memory",
-        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
         suggested_display_precision=2,
+        suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
         data_key="system.info",
         item_key="physmem",
-        scale=1000000000.0,
     ),
     TrueNasSensorEntityDescription(
         key="truenas_uptime_seconds",
@@ -97,7 +98,6 @@ ENTITY_DESCRIPTIONS = (
         data_key="system.info",
         item_key="loadavg",
         item_index=0,
-        scale=1.0,
     ),
     TrueNasSensorEntityDescription(
         key="truenas_load_avg_5min",
@@ -108,7 +108,6 @@ ENTITY_DESCRIPTIONS = (
         data_key="system.info",
         item_key="loadavg",
         item_index=1,
-        scale=1.0,
     ),
     TrueNasSensorEntityDescription(
         key="truenas_load_avg_15min",
@@ -119,7 +118,6 @@ ENTITY_DESCRIPTIONS = (
         data_key="system.info",
         item_key="loadavg",
         item_index=2,
-        scale=1.0,
     ),
 )
 
@@ -183,6 +181,7 @@ async def async_setup_entry(
                         icon="mdi:thermometer",
                         device_class=SensorDeviceClass.TEMPERATURE,
                         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+                        state_class=SensorStateClass.MEASUREMENT,
                         suggested_display_precision=0,
                         data_key="reporting.graph.cputemp",
                         data_index=0,
@@ -192,6 +191,82 @@ async def async_setup_entry(
                 )
                 for key in mean_map
             )
+
+    # dynamically work out what pool data is available
+    pool_data = coordinator.data.get("pool.query")
+    if isinstance(pool_data, list):
+        for index, pool in enumerate(pool_data):
+            pool_name = pool.get("name")
+            entities.extend(
+                [
+                    TrueNasSensor(
+                        coordinator=coordinator,
+                        entity_description=TrueNasSensorEntityDescription(
+                            key=f"truenas_pool_free_{pool_name}",
+                            name=f"{pool_name} Pool Free Space",
+                            icon="mdi:harddisk",
+                            device_class=SensorDeviceClass.DATA_SIZE,
+                            native_unit_of_measurement=UnitOfInformation.BYTES,
+                            suggested_display_precision=2,
+                            suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
+                            data_key="pool.query",
+                            data_index=index,
+                            item_key="free",
+                        ),
+                    ),
+                    TrueNasSensor(
+                        coordinator=coordinator,
+                        entity_description=TrueNasSensorEntityDescription(
+                            key=f"truenas_pool_allocated_{pool_name}",
+                            name=f"{pool_name} Pool Allocated Space",
+                            icon="mdi:harddisk",
+                            device_class=SensorDeviceClass.DATA_SIZE,
+                            native_unit_of_measurement=UnitOfInformation.BYTES,
+                            suggested_display_precision=2,
+                            suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
+                            data_key="pool.query",
+                            data_index=index,
+                            item_key="allocated",
+                        ),
+                    ),
+                    TrueNasSensor(
+                        coordinator=coordinator,
+                        entity_description=TrueNasSensorEntityDescription(
+                            key=f"truenas_pool_size_{pool_name}",
+                            name=f"{pool_name} Pool Size",
+                            icon="mdi:harddisk",
+                            device_class=SensorDeviceClass.DATA_SIZE,
+                            native_unit_of_measurement=UnitOfInformation.BYTES,
+                            suggested_display_precision=2,
+                            suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
+                            data_key="pool.query",
+                            data_index=index,
+                            item_key="size",
+                        ),
+                    ),
+                ]
+            )
+
+    # dynamically work out what temperature data is available
+    disktemp_data = coordinator.data.get("disk.temperatures")
+    if isinstance(disktemp_data, dict):
+        entities.extend(
+            TrueNasSensor(
+                coordinator=coordinator,
+                entity_description=TrueNasSensorEntityDescription(
+                    key=f"truenas_disk_temperature_{key}",
+                    name=f"{key} Disk Temperature",
+                    icon="mdi:thermometer",
+                    device_class=SensorDeviceClass.TEMPERATURE,
+                    native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+                    state_class=SensorStateClass.MEASUREMENT,
+                    suggested_display_precision=0,
+                    data_key="disk.temperatures",
+                    item_key=key,
+                ),
+            )
+            for key in disktemp_data
+        )
 
     async_add_entities(entities)
 
