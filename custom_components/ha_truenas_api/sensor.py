@@ -145,9 +145,9 @@ async def async_setup_entry(
     )
 
     # dynamically work out what cpu data is available
-    cputemp_data = coordinator.data.get("reporting.graph.cpu")
-    if isinstance(cputemp_data, list):
-        mean_map = property_from_path(cputemp_data[0], "aggregations:mean")
+    cpu_data = coordinator.data.get("reporting.graph.cpu")
+    if isinstance(cpu_data, list) and cpu_data:
+        mean_map = property_from_path(cpu_data[0], "aggregations:mean")
 
         if isinstance(mean_map, dict):
             entities.extend(
@@ -169,9 +169,9 @@ async def async_setup_entry(
             )
 
     # dynamically work out what temperature data is available
-    cpu_data = coordinator.data.get("reporting.graph.cputemp")
-    if isinstance(cpu_data, list):
-        mean_map = property_from_path(cpu_data[0], "aggregations:mean")
+    cputemp_data = coordinator.data.get("reporting.graph.cputemp")
+    if isinstance(cputemp_data, list) and cputemp_data:
+        mean_map = property_from_path(cputemp_data[0], "aggregations:mean")
 
         if isinstance(mean_map, dict):
             entities.extend(
