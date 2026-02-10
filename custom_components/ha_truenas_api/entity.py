@@ -10,6 +10,18 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .coordinator import TrueNasDataUpdateCoordinator
 
 
+def property_from_path(data: dict[str, Any] | None, path: str) -> Any | None:
+    """Navigate to a property given a set of keys to traverse."""
+    parts = path.split(":")
+
+    this_data = data
+    for part in parts:
+        if this_data is None:
+            return None
+        this_data = this_data.get(part)
+    return this_data
+
+
 class TrueNasEntity(CoordinatorEntity[TrueNasDataUpdateCoordinator]):
     """TrueNasEntity class."""
 
@@ -28,13 +40,3 @@ class TrueNasEntity(CoordinatorEntity[TrueNasDataUpdateCoordinator]):
                 ),
             },
         )
-
-    def _property_from_path(self, data: dict[str, Any] | None, path: str) -> Any | None:
-        parts = path.split(":")
-
-        this_data = data
-        for part in parts:
-            if this_data is None:
-                return None
-            this_data = this_data.get(part)
-        return this_data

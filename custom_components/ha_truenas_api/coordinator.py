@@ -88,6 +88,16 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
                         },
                     ],
                 ),
+                "reporting.graph.cpu": (
+                    "reporting.graph",
+                    [
+                        "cpu",
+                        {
+                            "start": int(time.time() - 5.0),
+                            "end": int(time.time() - 5.0),
+                        },
+                    ],
+                ),
             }
 
             # rather than calling these individually, do them all at once

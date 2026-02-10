@@ -12,13 +12,14 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.const import (
+    PERCENTAGE,
     EntityCategory,
     UnitOfInformation,
     UnitOfTemperature,
     UnitOfTime,
 )
 
-from .entity import TrueNasEntity
+from .entity import TrueNasEntity, property_from_path
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -120,18 +121,6 @@ ENTITY_DESCRIPTIONS = (
         item_index=2,
         scale=1.0,
     ),
-    TrueNasSensorEntityDescription(
-        key="truenas_cpu_temperature",
-        name="CPU Temperature",
-        icon="mdi:equalizer",
-        device_class=SensorDeviceClass.TEMPERATURE,
-        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        suggested_display_precision=0,
-        data_key="reporting.graph.cputemp",
-        data_index=0,
-        # should be largely irrelevant which I use, as its a single data point
-        item_key="aggregations:mean:cpu",
-    ),
 )
 
 
@@ -141,13 +130,70 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the sensor platform."""
-    async_add_entities(
+    coordinator = entry.runtime_data.coordinator
+
+    await coordinator.async_config_entry_first_refresh()
+
+    entities = []
+
+    entities.extend(
         TrueNasSensor(
-            coordinator=entry.runtime_data.coordinator,
+            coordinator=coordinator,
             entity_description=entity_description,
         )
         for entity_description in ENTITY_DESCRIPTIONS
     )
+
+    # dynamically work out what cpu data is available
+    cputemp_data = coordinator.data.get("reporting.graph.cpu")
+    if isinstance(cputemp_data, list):
+        mean_map = property_from_path(cputemp_data[0], "aggregations:mean")
+
+        if isinstance(mean_map, dict):
+            entities.extend(
+                TrueNasSensor(
+                    coordinator=coordinator,
+                    entity_description=TrueNasSensorEntityDescription(
+                        key=f"truenas_usage_{key}",
+                        name=f"{key.upper()} Usage",
+                        icon="mdi:cpu-64-bit",
+                        native_unit_of_measurement=PERCENTAGE,
+                        suggested_display_precision=0,
+                        data_key="reporting.graph.cpu",
+                        data_index=0,
+                        # should be largely irrelevant which I use, as its a single data point
+                        item_key=f"aggregations:mean:{key}",
+                    ),
+                )
+                for key in mean_map
+            )
+
+    # dynamically work out what temperature data is available
+    cpu_data = coordinator.data.get("reporting.graph.cputemp")
+    if isinstance(cpu_data, list):
+        mean_map = property_from_path(cpu_data[0], "aggregations:mean")
+
+        if isinstance(mean_map, dict):
+            entities.extend(
+                TrueNasSensor(
+                    coordinator=coordinator,
+                    entity_description=TrueNasSensorEntityDescription(
+                        key=f"truenas_temperature_{key}",
+                        name=f"{key.upper()} Temperature",
+                        icon="mdi:thermometer",
+                        device_class=SensorDeviceClass.TEMPERATURE,
+                        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+                        suggested_display_precision=0,
+                        data_key="reporting.graph.cputemp",
+                        data_index=0,
+                        # should be largely irrelevant which I use, as its a single data point
+                        item_key=f"aggregations:mean:{key}",
+                    ),
+                )
+                for key in mean_map
+            )
+
+    async_add_entities(entities)
 
 
 class TrueNasSensor(TrueNasEntity, SensorEntity):
@@ -177,7 +223,7 @@ class TrueNasSensor(TrueNasEntity, SensorEntity):
         if self.data_index is not None and isinstance(data, list):
             data = data[self.data_index]
 
-        data = self._property_from_path(data, self.item_key)
+        data = property_from_path(data, self.item_key)
 
         if self.item_index is not None and isinstance(data, list):
             data = data[self.item_index]
