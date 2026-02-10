@@ -19,6 +19,7 @@ class TrueNasEntity(CoordinatorEntity[TrueNasDataUpdateCoordinator]):
         """Initialize."""
         super().__init__(coordinator)
         self._attr_unique_id = unique_id
+        self._attr_has_entity_name = True
         self._attr_device_info = DeviceInfo(
             identifiers={
                 (

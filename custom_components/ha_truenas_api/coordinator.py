@@ -99,6 +99,8 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
                 )
 
             try:
+                keys = list(self._pending_requests.keys())
+
                 results = await asyncio.wait_for(
                     asyncio.gather(
                         *list(self._pending_requests.values()),
@@ -108,8 +110,9 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
                 )
 
                 # Update cache with results
-                for index, job_key in enumerate(self._pending_requests):
+                for index, job_key in enumerate(keys):
                     if not isinstance(results[index], Exception):
+                        _LOGGER.debug("Updating cache for %s", job_key)
                         self._data_cache[job_key] = results[index]
                     else:
                         _LOGGER.error("Failed to get %s: %s", job_key, results[index])
@@ -120,6 +123,7 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
                 for future in self._pending_requests.values():
                     future.cancel()
                 self._pending_requests.clear()
+                self._data_cache = {}
 
         except Exception as exception:
             _LOGGER.exception("Error during update")
