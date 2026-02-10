@@ -168,10 +168,6 @@ class TrueNasSensor(TrueNasEntity, SensorEntity):
         self.scale = entity_description.scale
 
     @property
-    def unique_id(self) -> str:
-        return f"{self.coordinator.config_entry.entry_id}_{self.entity_description.key}"
-
-    @property
     def native_value(self) -> str | int | float | None:
         """Return the native value of the sensor."""
         if self.coordinator.data is None:
