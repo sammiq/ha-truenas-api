@@ -77,17 +77,6 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
             jobs = {
                 "system.info": ("system.info", []),
                 "update.status": ("update.status", []),
-                "disk.details": ("disk.details", []),
-                "reporting.graph.cputemp": (
-                    "reporting.graph",
-                    [
-                        "cputemp",
-                        {
-                            "start": int(time.time() - 5.0),
-                            "end": int(time.time() - 5.0),
-                        },
-                    ],
-                ),
                 "reporting.graph.cpu": (
                     "reporting.graph",
                     [
@@ -98,6 +87,21 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
                         },
                     ],
                 ),
+                "reporting.graph.cputemp": (
+                    "reporting.graph",
+                    [
+                        "cputemp",
+                        {
+                            "start": int(time.time() - 5.0),
+                            "end": int(time.time() - 5.0),
+                        },
+                    ],
+                ),
+                "pool.query": (
+                    "pool.query",
+                    [[], {"select": ["name", "allocated", "free", "size"]}],
+                ),
+                "disk.temperatures": ("disk.temperatures", []),
             }
 
             # rather than calling these individually, do them all at once
