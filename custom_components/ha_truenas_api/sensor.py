@@ -9,9 +9,9 @@ from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
+    SensorStateClass,
 )
 from homeassistant.const import (
-    PERCENTAGE,
     EntityCategory,
     UnitOfInformation,
     UnitOfTemperature,
@@ -63,6 +63,7 @@ ENTITY_DESCRIPTIONS = (
         key="truenas_uptime_seconds",
         name="Uptime",
         icon="mdi:timer-outline",
+        state_class=SensorStateClass.TOTAL_INCREASING,
         device_class=SensorDeviceClass.DURATION,
         native_unit_of_measurement=UnitOfTime.SECONDS,
         data_key="system.info",
@@ -72,6 +73,7 @@ ENTITY_DESCRIPTIONS = (
         key="truenas_logical_cores",
         name="Logical Cores",
         entity_category=EntityCategory.DIAGNOSTIC,
+        suggested_display_precision=0,
         icon="mdi:developer-board",
         data_key="system.info",
         item_key="cores",
@@ -80,6 +82,7 @@ ENTITY_DESCRIPTIONS = (
         key="truenas_physical_cores",
         name="Physical Cores",
         entity_category=EntityCategory.DIAGNOSTIC,
+        suggested_display_precision=0,
         icon="mdi:developer-board",
         data_key="system.info",
         item_key="physical_cores",
@@ -88,34 +91,34 @@ ENTITY_DESCRIPTIONS = (
         key="truenas_load_avg_1min",
         name="1 minute Load Average",
         icon="mdi:equalizer",
-        native_unit_of_measurement=PERCENTAGE,
-        suggested_display_precision=1,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
         data_key="system.info",
         item_key="loadavg",
         item_index=0,
-        scale=1 / 100.0,
+        scale=1.0,
     ),
     TrueNasSensorEntityDescription(
         key="truenas_load_avg_5min",
         name="5 minute Load Average",
         icon="mdi:equalizer",
-        native_unit_of_measurement=PERCENTAGE,
-        suggested_display_precision=1,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
         data_key="system.info",
         item_key="loadavg",
         item_index=1,
-        scale=1 / 100.0,
+        scale=1.0,
     ),
     TrueNasSensorEntityDescription(
         key="truenas_load_avg_15min",
         name="15 minute Load Average",
         icon="mdi:equalizer",
-        native_unit_of_measurement=PERCENTAGE,
-        suggested_display_precision=1,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
         data_key="system.info",
         item_key="loadavg",
         item_index=2,
-        scale=1 / 100.0,
+        scale=1.0,
     ),
     TrueNasSensorEntityDescription(
         key="truenas_cpu_temperature",
@@ -163,6 +166,10 @@ class TrueNasSensor(TrueNasEntity, SensorEntity):
         self.item_key = entity_description.item_key
         self.item_index = entity_description.item_index
         self.scale = entity_description.scale
+
+    @property
+    def unique_id(self) -> str:
+        return f"{self.coordinator.config_entry.entry_id}_{self.entity_description.key}"
 
     @property
     def native_value(self) -> str | int | float | None:
