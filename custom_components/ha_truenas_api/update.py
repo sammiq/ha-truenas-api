@@ -10,7 +10,7 @@ from homeassistant.components.update import (
 )
 from homeassistant.const import EntityCategory
 
-from .entity import TrueNasEntity
+from .entity import TrueNasEntity, property_from_path
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -59,7 +59,7 @@ class TrueNasUpdateEntity(TrueNasEntity, UpdateEntity):
         """Return the latest version available."""
         if self.coordinator.data is None:
             return None
-        return self._property_from_path(
+        return property_from_path(
             self.coordinator.data,
             "system.info:version",
         )
@@ -70,7 +70,7 @@ class TrueNasUpdateEntity(TrueNasEntity, UpdateEntity):
         if self.coordinator.data is None:
             return None
         return (
-            self._property_from_path(
+            property_from_path(
                 self.coordinator.data,
                 "update.status:status:new_version:version",
             )
@@ -82,7 +82,7 @@ class TrueNasUpdateEntity(TrueNasEntity, UpdateEntity):
         """Return the release notes of the latest version."""
         if self.coordinator.data is None:
             return None
-        return self._property_from_path(
+        return property_from_path(
             self.coordinator.data,
             "update.status:status:new_version:release_notes_url",
         )
@@ -93,7 +93,7 @@ class TrueNasUpdateEntity(TrueNasEntity, UpdateEntity):
         if self.coordinator.data is None:
             return None
         return (
-            self._property_from_path(
+            property_from_path(
                 self.coordinator.data,
                 "update.status:update_download_progress",
             )
@@ -105,7 +105,7 @@ class TrueNasUpdateEntity(TrueNasEntity, UpdateEntity):
         """Return percentage of update in progress."""
         if self.coordinator.data is None:
             return None
-        return self._property_from_path(
+        return property_from_path(
             self.coordinator.data,
             "update.status:update_download_progress:percent",
         )
