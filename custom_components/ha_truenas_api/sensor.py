@@ -56,7 +56,7 @@ def calc_percentage(
         if denominator is None:
             return None
         return (float(numerator) / float(denominator)) * 100.0
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, ZeroDivisionError):
         return None
 
 
@@ -74,7 +74,7 @@ def calc_remaining_percentage(
         if denominator is None:
             return None
         return (1.0 - float(numerator) / float(denominator)) * 100.0
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, ZeroDivisionError):
         return None
 
 
