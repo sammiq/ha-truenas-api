@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -19,7 +19,7 @@ from homeassistant.const import (
     UnitOfTime,
 )
 
-from .entity import TrueNasEntity, property_from_path
+from .entity import TrueNasEntity, find_data_item, property_from_path
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -34,10 +34,9 @@ class TrueNasSensorEntityDescription(SensorEntityDescription):
     """Describes TrueNAs sensor entities."""
 
     data_key: str
-    data_index: int | None = None
+    data_match: dict[str, Any] | None = None
     item_key: str
     item_index: int | None = None
-    scale: float | None = None
 
 
 ENTITY_DESCRIPTIONS = (
@@ -119,6 +118,30 @@ ENTITY_DESCRIPTIONS = (
         item_key="loadavg",
         item_index=2,
     ),
+    TrueNasSensorEntityDescription(
+        key="truenas_mem_free",
+        name="Free Memory",
+        device_class=SensorDeviceClass.DATA_SIZE,
+        icon="mdi:memory",
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        suggested_display_precision=2,
+        suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        data_key="reporting.graph.memory",
+        data_match={"name": "memory"},
+        item_key="aggregations:mean:available",
+    ),
+    TrueNasSensorEntityDescription(
+        key="truenas_arc_size",
+        name="ZFS Cache Size",
+        device_class=SensorDeviceClass.DATA_SIZE,
+        icon="mdi:memory",
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        suggested_display_precision=2,
+        suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        data_key="reporting.graph.arcsize",
+        data_match={"name": "arcsize"},
+        item_key="aggregations:mean:size",
+    ),
 )
 
 
@@ -158,7 +181,7 @@ async def async_setup_entry(
                         native_unit_of_measurement=PERCENTAGE,
                         suggested_display_precision=0,
                         data_key="reporting.graph.cpu",
-                        data_index=0,
+                        data_match={"name": "cpu"},
                         # should be largely irrelevant which I use, as its a single data point
                         item_key=f"aggregations:mean:{key}",
                     ),
@@ -184,7 +207,7 @@ async def async_setup_entry(
                         state_class=SensorStateClass.MEASUREMENT,
                         suggested_display_precision=0,
                         data_key="reporting.graph.cputemp",
-                        data_index=0,
+                        data_match={"name": "cputemp"},
                         # should be largely irrelevant which I use, as its a single data point
                         item_key=f"aggregations:mean:{key}",
                     ),
@@ -195,8 +218,10 @@ async def async_setup_entry(
     # dynamically work out what pool data is available
     pool_data = coordinator.data.get("pool.query")
     if isinstance(pool_data, list):
-        for index, pool in enumerate(pool_data):
+        for pool in pool_data:
             pool_name = pool.get("name")
+            if not pool_name:
+                continue
             entities.extend(
                 [
                     TrueNasSensor(
@@ -210,7 +235,7 @@ async def async_setup_entry(
                             suggested_display_precision=2,
                             suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
                             data_key="pool.query",
-                            data_index=index,
+                            data_match={"name": pool_name},
                             item_key="free",
                         ),
                     ),
@@ -225,7 +250,7 @@ async def async_setup_entry(
                             suggested_display_precision=2,
                             suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
                             data_key="pool.query",
-                            data_index=index,
+                            data_match={"name": pool_name},
                             item_key="allocated",
                         ),
                     ),
@@ -240,7 +265,7 @@ async def async_setup_entry(
                             suggested_display_precision=2,
                             suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
                             data_key="pool.query",
-                            data_index=index,
+                            data_match={"name": pool_name},
                             item_key="size",
                         ),
                     ),
@@ -283,29 +308,22 @@ class TrueNasSensor(TrueNasEntity, SensorEntity):
         super().__init__(entity_description.key, coordinator)
         self.entity_description = entity_description
         self.data_key = entity_description.data_key
-        self.data_index = entity_description.data_index
+        self.data_match = entity_description.data_match
         self.item_key = entity_description.item_key
         self.item_index = entity_description.item_index
-        self.scale = entity_description.scale
 
     @property
     def native_value(self) -> str | int | float | None:
         """Return the native value of the sensor."""
         if self.coordinator.data is None:
             return None
-        data = self.coordinator.data.get(self.data_key)
 
-        if self.data_index is not None and isinstance(data, list):
-            data = data[self.data_index]
+        data = self.coordinator.data.get(self.data_key)
+        if self.data_match is not None:
+            data = find_data_item(data, self.data_match)
 
         data = property_from_path(data, self.item_key)
-
         if self.item_index is not None and isinstance(data, list):
             data = data[self.item_index]
 
-        if data is None or self.scale is None:
-            return data
-        try:
-            return float(data) / self.scale
-        except (ValueError, TypeError):
-            return None
+        return data

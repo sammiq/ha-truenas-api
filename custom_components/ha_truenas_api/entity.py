@@ -22,6 +22,35 @@ def property_from_path(data: dict[str, Any] | None, path: str) -> Any | None:
     return this_data
 
 
+def find_data_item(
+    data: Any,
+    match: dict[str, Any] | None = None,
+) -> Any:
+    """
+    Find an item in data using either a match dict or an index.
+
+    Args:
+        data: The data to search (list or dict)
+        match: Dictionary of key-value pairs to match against list items
+
+    Returns:
+        The matched item, or None if not found
+
+    """
+    if match:
+        if isinstance(data, list):
+            # Find first item where all match criteria are met
+            for item in data:
+                if isinstance(item, dict) and all(
+                    item.get(k) == v for k, v in match.items()
+                ):
+                    return item
+        elif isinstance(data, dict) and all(data.get(k) == v for k, v in match.items()):
+            return data
+
+    return None
+
+
 class TrueNasEntity(CoordinatorEntity[TrueNasDataUpdateCoordinator]):
     """TrueNasEntity class."""
 
