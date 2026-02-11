@@ -27,7 +27,7 @@ def find_data_item(
     match: dict[str, Any] | None = None,
 ) -> Any:
     """
-    Find an item in data using either a match dict or an index.
+    Find an item in data using a dict containing the key/value pairs to match.
 
     Args:
         data: The data to search (list or dict)

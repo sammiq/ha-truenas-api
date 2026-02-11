@@ -22,6 +22,8 @@ from homeassistant.const import (
 from .entity import TrueNasEntity, find_data_item, property_from_path
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from homeassistant.core import HomeAssistant
     from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -37,6 +39,43 @@ class TrueNasSensorEntityDescription(SensorEntityDescription):
     data_match: dict[str, Any] | None = None
     item_key: str
     item_index: int | None = None
+    value_fn: Callable[[TrueNasSensor, Any], Any] | None = None
+
+
+def calc_percentage(
+    sensor: TrueNasSensor,
+    numerator: Any,
+    section: str,
+    match: dict[str, Any] | None,
+    item_key: str,
+    item_index: int | None,
+) -> float | None:
+    """Calculate a percentage from two items in the data."""
+    try:
+        denominator = sensor.find_value(section, match, item_key, item_index)
+        if denominator is None:
+            return None
+        return (float(numerator) / float(denominator)) * 100.0
+    except (TypeError, ValueError):
+        return None
+
+
+def calc_remaining_percentage(
+    sensor: TrueNasSensor,
+    numerator: Any,
+    section: str,
+    match: dict[str, Any] | None,
+    item_key: str,
+    item_index: int | None,
+) -> float | None:
+    """Calculate a remaining percentage from two items in the data."""
+    try:
+        denominator = sensor.find_value(section, match, item_key, item_index)
+        if denominator is None:
+            return None
+        return (1.0 - float(numerator) / float(denominator)) * 100.0
+    except (TypeError, ValueError):
+        return None
 
 
 ENTITY_DESCRIPTIONS = (
@@ -124,6 +163,7 @@ ENTITY_DESCRIPTIONS = (
         device_class=SensorDeviceClass.DATA_SIZE,
         icon="mdi:memory",
         native_unit_of_measurement=UnitOfInformation.BYTES,
+        state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
         data_key="reporting.graph.memory",
@@ -131,11 +171,30 @@ ENTITY_DESCRIPTIONS = (
         item_key="aggregations:mean:available",
     ),
     TrueNasSensorEntityDescription(
+        key="truenas_mem_usage",
+        name="Memory Usage",
+        icon="mdi:memory",
+        native_unit_of_measurement=PERCENTAGE,
+        suggested_display_precision=0,
+        data_key="reporting.graph.memory",
+        data_match={"name": "memory"},
+        item_key="aggregations:mean:available",
+        value_fn=lambda sensor, value: calc_remaining_percentage(
+            sensor,
+            value,
+            "system.info",
+            None,
+            "physmem",
+            None,
+        ),
+    ),
+    TrueNasSensorEntityDescription(
         key="truenas_arc_size",
         name="ZFS Cache Size",
         device_class=SensorDeviceClass.DATA_SIZE,
         icon="mdi:memory",
         native_unit_of_measurement=UnitOfInformation.BYTES,
+        state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
         data_key="reporting.graph.arcsize",
@@ -269,6 +328,27 @@ async def async_setup_entry(
                             item_key="size",
                         ),
                     ),
+                    TrueNasSensor(
+                        coordinator=coordinator,
+                        entity_description=TrueNasSensorEntityDescription(
+                            key=f"truenas_pool_usage_{pool_name}",
+                            name=f"{pool_name} Pool Usage",
+                            icon="mdi:harddisk",
+                            native_unit_of_measurement=PERCENTAGE,
+                            suggested_display_precision=0,
+                            data_key="pool.query",
+                            data_match={"name": pool_name},
+                            item_key="allocated",
+                            value_fn=lambda sensor, value: calc_percentage(
+                                sensor,
+                                value,
+                                sensor.data_key,
+                                sensor.data_match,
+                                "size",
+                                None,
+                            ),
+                        ),
+                    ),
                 ]
             )
 
@@ -311,19 +391,37 @@ class TrueNasSensor(TrueNasEntity, SensorEntity):
         self.data_match = entity_description.data_match
         self.item_key = entity_description.item_key
         self.item_index = entity_description.item_index
+        self.value_fn = entity_description.value_fn
 
     @property
     def native_value(self) -> str | int | float | None:
         """Return the native value of the sensor."""
+        value = self.find_value(
+            self.data_key, self.data_match, self.item_key, self.item_index
+        )
+
+        if value is not None and self.value_fn:
+            return self.value_fn(self, value)
+
+        return value
+
+    def find_value(
+        self,
+        section: str,
+        match: dict[str, Any] | None,
+        item_key: str,
+        item_index: int | None,
+    ) -> str | int | float | None:
+        """Find a matching value from criteria or return None."""
         if self.coordinator.data is None:
             return None
 
-        data = self.coordinator.data.get(self.data_key)
-        if self.data_match is not None:
-            data = find_data_item(data, self.data_match)
+        data = self.coordinator.data.get(section)
+        if match is not None:
+            data = find_data_item(data, match)
 
-        data = property_from_path(data, self.item_key)
-        if self.item_index is not None and isinstance(data, list):
-            data = data[self.item_index]
+        value = property_from_path(data, item_key)
+        if item_index is not None and isinstance(value, list):
+            value = value[item_index]
 
-        return data
+        return value
