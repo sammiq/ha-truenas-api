@@ -73,6 +73,7 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
             raise TimeoutError(msg)
 
         _LOGGER.debug("Requesting data from websocket")
+        start_time = end_time = int(time.time() - 5.0)
         try:
             jobs = {
                 "system.info": ("system.info", []),
@@ -82,8 +83,8 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
                     [
                         "cpu",
                         {
-                            "start": int(time.time() - 5.0),
-                            "end": int(time.time() - 5.0),
+                            "start": start_time,
+                            "end": end_time,
                         },
                     ],
                 ),
@@ -92,8 +93,8 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
                     [
                         "cputemp",
                         {
-                            "start": int(time.time() - 5.0),
-                            "end": int(time.time() - 5.0),
+                            "start": start_time,
+                            "end": end_time,
                         },
                     ],
                 ),
@@ -102,6 +103,26 @@ class TrueNasDataUpdateCoordinator(DataUpdateCoordinator):
                     [[], {"select": ["name", "allocated", "free", "size"]}],
                 ),
                 "disk.temperatures": ("disk.temperatures", []),
+                "reporting.graph.memory": (
+                    "reporting.graph",
+                    [
+                        "memory",
+                        {
+                            "start": start_time,
+                            "end": end_time,
+                        },
+                    ],
+                ),
+                "reporting.graph.arcsize": (
+                    "reporting.graph",
+                    [
+                        "arcsize",
+                        {
+                            "start": start_time,
+                            "end": end_time,
+                        },
+                    ],
+                ),
             }
 
             # rather than calling these individually, do them all at once
