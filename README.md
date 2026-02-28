@@ -7,8 +7,6 @@
 ![Project Maintenance][maintenance-shield]
 [![Community Forum][forum-shield]][forum]
 
-## NOTE: In heavy development, please do not install. Please use another TrueNAS integration instead.
-
 _Integration to retrieve information from TrueNAS 25.10+ ver Websocket via JSON-RPC 2.0._
 
 TrueNAS integrations tended to use the now deprecated methods of retrieving data from TrueNAS and/or
@@ -21,6 +19,8 @@ The goals of this project are simple:
 - create entities for each major section of the TrueNAS API that are readable
 - ensure it uses API tokens only to ensure no user/password information is saved in HA or exchanged.
 
+At the moment, it provides the bare minimum of what I consider acceptable, and has been running constantly for extended periods with no
+observed memory leaks or other issues.
 
 ## Installation
 
@@ -48,4 +48,5 @@ If you want to contribute to this please read the [Contribution guidelines](CONT
 [license-shield]: https://img.shields.io/github/license/sammiq/ha-truenas-api.svg?style=for-the-badge
 [maintenance-shield]: https://img.shields.io/badge/maintainer-%40sammiq-blue.svg?style=for-the-badge
 [releases-shield]: https://img.shields.io/github/release/sammiq/ha-truenas-api.svg?style=for-the-badge
+
 [releases]: https://github.com/sammiq/ha-truenas-api/releases
